@@ -1,0 +1,146 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+#root {
+  height: 100vh;
+  padding: 0;
+  text-align: left;
+  box-sizing: border-box;
+  display: flex;
+}
+
+.app-layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.sidebar {
+  width: 200px;
+  background-color: #252526;
+  border-right: 1px solid #444;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  width: 100%;
+  height: 100%;
+  background-color: #1e1e1e;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #3c3c3c;
+  border-bottom: 1px solid #444;
+  flex-shrink: 0;
+}
+
+.editor-container {
+  flex-grow: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid #444;
+}
+
+.sidebar-header button {
+  flex-grow: 1;
+}
+
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+}
+
+.file-item {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-item:hover {
+  background-color: #3a3d41;
+}
+
+.file-item.active {
+  background-color: #094771;
+}
+
+.io-layout {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem 1.5rem 1.5rem;
+  flex-shrink: 0;
+}
+
+.io-pane {
+  display: flex;
+  flex-direction: column;
+}
+
+.io-box {
+  width: 100%;
+  flex-grow: 1;
+  height: 150px;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  font-family: monospace;
+  font-size: 14px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.output-box {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-y: auto; /* Thêm thanh cuộn dọc khi nội dung dài */
+}
+
+/* Tùy chọn: Thêm style cho phần output để dễ phân biệt */
+.output-box p {
+  font-size: 0.8em;
+  color: #888;
+  margin: 1em 0 0.5em;
+  font-weight: bold;
+  border-bottom: 1px solid #444;
+  padding-bottom: 0.25em;
+}
+
+textarea.io-box {
+  line-height: 1.5;
+  overflow-y: auto; /* Thêm thanh cuộn cho ô input */
+}
