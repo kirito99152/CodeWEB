@@ -5,6 +5,7 @@ import path from 'path';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import crypto from 'crypto';
+import axios from 'axios';
 import { fileURLToPath } from 'url';
 
 const app = express();
@@ -21,92 +22,59 @@ app.use(express.static(path.join(__dirname, 'dist')));
 
 // API route
 app.post('/compile', (req, res) => {
-  const { code, language, userInput } = req.body;
+  const { code, language, userInput, userConnectionId } = req.body;
   console.log(`[${new Date().toISOString()}] Nhận được yêu cầu POST đến /compile`);
-  processCode(code, language, userInput, res);
+  processCode(code, language, userInput, userConnectionId, res);
 });
 
+// Cấu hình cho API chấm code nội bộ
+const EXECUTION_API_URL = process.env.EXECUTION_API_URL || "http://localhost:5041/api/Execution/execute";
+const EXECUTION_API_KEY = process.env.EXECUTION_API_KEY || "day-la-mot-chuoi-api-key-rat-dai-va-bi-mat-hay-thay-the-no";
+
 // Hàm xử lý biên dịch code
-function processCode(code, language, userInput, res) {
+async function processCode(code, language, userInput, userConnectionId, res) {
   console.log(`[${new Date().toISOString()}] Bắt đầu xử lý code...`);
   console.log(`> Ngôn ngữ: ${language}`);
   console.log(`> Input: "${userInput.slice(0, 50)}${userInput.length > 50 ? '...' : ''}"`);
 
   if (language !== 'c_cpp') {
     console.log('[LỖI] Ngôn ngữ không được hỗ trợ.');
-    return res.status(400).json({ compileOutput: 'Chỉ hỗ trợ chạy code C++.', executionOutput: '' });
+    return res.status(400).json({ output: 'Chỉ hỗ trợ chạy code C++.', error: '' });
   }
 
-  // Tạo một thư mục tạm duy nhất cho mỗi yêu cầu
-  const uniqueDir = path.join(__dirname, 'temp', crypto.randomBytes(16).toString('hex'));
-  fs.mkdirSync(uniqueDir, { recursive: true });
+  if (!userConnectionId) {
+    console.log('[LỖI] Thiếu userConnectionId.');
+    return res.status(400).json({ message: 'Thiếu userConnectionId. Không thể gửi yêu cầu chấm bài.' });
+  }
 
-  // Hàm dọn dẹp thư mục tạm
-  const cleanup = () => {
-    fs.rm(uniqueDir, { recursive: true, force: true }, (rmErr) => {
-      if (rmErr) {
-        console.error(`[LỖI] Không thể xóa thư mục tạm ${uniqueDir}:`, rmErr);
-      } else {
-        console.log(`Đã dọn dẹp thư mục tạm: ${uniqueDir}`);
-      }
-    });
+  const payload = {
+    sourceCode: code,
+    language: 'cpp', // API nội bộ yêu cầu 'cpp'
+    input: userInput,
+    userConnectionId: userConnectionId // Sử dụng connection ID từ client
   };
 
-  const filePath = path.join(uniqueDir, 'source.cpp');
-  const outputPath = path.join(uniqueDir, 'source.out');
-
-  console.log(`Ghi code vào file: ${filePath}`);
-  fs.writeFile(filePath, code, (err) => {
-    if (err) {
-      console.error(`[LỖI] Ghi file tạm thất bại tại ${uniqueDir}:`, err);
-      cleanup();
-      return res.status(500).json({ compileOutput: 'Lỗi khi ghi file tạm.', executionOutput: '' });
-    }
-
-    const compileCommand = `g++ ${filePath} -o ${outputPath} -std=c++17 -Wall`;
-    console.log(`Thực thi lệnh biên dịch: ${compileCommand}`);
-    // Sử dụng g++ để biên dịch
-    exec(compileCommand, (compileError, compileStdout, compileStderr) => {
-      if (compileError) {
-        console.error('[LỖI BIÊN DỊCH]', compileStderr);
-        cleanup();
-        // Nếu có lỗi biên dịch, gửi stderr về client
-        return res.json({ compileOutput: compileStderr, executionOutput: '' });
-      }
-
-      const compileOutputMessage = compileStderr || 'Biên dịch thành công!';
-      console.log('[BIÊN DỊCH] Thành công.');
-      console.log(`Thực thi file output: ${outputPath}`);
-      // Nếu biên dịch thành công, thực thi file
-      const executionProcess = exec(outputPath, { timeout: 5000 }, (execError, execStdout, execStderr) => { // Thêm timeout 5 giây
-        if (execError) {
-          // Kiểm tra nếu lỗi là do timeout
-          if (execError.signal === 'SIGTERM') {
-            console.error('[LỖI THỰC THI] Quá thời gian thực thi (timeout).');
-            cleanup();
-            return res.json({ compileOutput: compileOutputMessage, executionOutput: 'Lỗi: Chương trình chạy quá thời gian.\nCó thể do đang chờ nhập liệu (cin) hoặc bị kẹt trong vòng lặp vô tận.' });
-          }
-          // Các lỗi thực thi khác (runtime error)
-          console.error('[LỖI THỰC THI]', execStderr || execError.message);
-          cleanup();
-          return res.json({ compileOutput: compileOutputMessage, executionOutput: execStderr || execError.message });
-        }
-        // Cắt bớt output nếu quá dài để tránh treo trình duyệt
-        const finalOutput = execStdout.length > 50000 ? execStdout.slice(0, 50000) + '\n... (output quá dài đã được cắt bớt)' : execStdout;
-        console.log('[THỰC THI] Hoàn tất.');
-        cleanup();
-        // Trả về kết quả thực thi
-        res.json({ compileOutput: compileOutputMessage, executionOutput: finalOutput });
-      });
-
-      // Cung cấp input cho chương trình
-      if (userInput) {
-        console.log('Cung cấp input cho chương trình...');
-        executionProcess.stdin.write(userInput);
-        executionProcess.stdin.end();
-      }
+  try {
+    console.log(`Gửi yêu cầu đến API chấm code: ${EXECUTION_API_URL}`);
+    const apiResponse = await axios.post(EXECUTION_API_URL, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key': EXECUTION_API_KEY
+      },
+      // Nếu API của bạn dùng chứng chỉ tự ký (self-signed), bạn cần thêm dòng sau.
+      // Nếu không, hãy xóa nó đi.
+      httpsAgent: new (await import('https')).Agent({ rejectUnauthorized: false })
     });
-  });
+
+    console.log('[API] Yêu cầu thành công.');
+    // Chuyển tiếp phản hồi từ API nội bộ (thường là một thông báo xác nhận) về cho client
+    res.status(apiResponse.status).json(apiResponse.data);
+  } catch (error) {
+    console.error('[LỖI API]', error.message);
+    const status = error.response?.status || 500;
+    const data = error.response?.data || { message: 'Lỗi khi gọi đến dịch vụ chấm code.', details: error.message };
+    res.status(status).json(data);
+  }
 }
 
 // Route bắt tất cả các yêu cầu khác và trả về index.html của React

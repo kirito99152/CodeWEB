@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react';
+import { HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import './App.css'
 import AceEditor from 'react-ace'
 
@@ -8,6 +9,10 @@ import 'ace-builds/src-noconflict/mode-python'
 import 'ace-builds/src-noconflict/theme-monokai'
 import 'ace-builds/src-noconflict/ext-language_tools'
 
+// Lấy URL từ biến môi trường của Vite
+const SIGNALR_HUB_URL = import.meta.env.VITE_SIGNALR_HUB_URL || "https://localhost:5001/judgehub";
+const PROXY_COMPILE_URL = import.meta.env.VITE_PROXY_COMPILE_URL || "http://localhost:3000/compile";
+
 const initialCodes = {
   c_cpp: `// Viết mã C++ của bạn ở đây
 #include <iostream>
@@ -16,84 +21,140 @@ int main() {
     std::cout << "Xin chào, C++!";
     return 0;
 }`,
-  python: `# Viết mã Python của bạn ở đây
-def say_hello():
-    print("Xin chào, Python!")
-
-say_hello()`,
-}
+};
 
 function App() {
-  const [files, setFiles] = useState(() => {
-    const savedFiles = localStorage.getItem('code_files')
-    if (savedFiles) {
-      return JSON.parse(savedFiles)
-    }
-    // Khởi tạo với file mặc định nếu chưa có gì
-    return { 'main.cpp': initialCodes.c_cpp }
-  })
+    const [files, setFiles] = useState(() => {
+        const savedFiles = localStorage.getItem('code_files');
+        return savedFiles ? JSON.parse(savedFiles) : { 'main.cpp': initialCodes.c_cpp };
+    });
+    const [activeFile, setActiveFile] = useState(Object.keys(files)[0] || null);
+    const [code, setCode] = useState(activeFile ? files[activeFile] : '');
+    const [language, setLanguage] = useState('c_cpp'); // Phải khớp với server.js
+    const [userInput, setUserInput] = useState('');
+    const [result, setResult] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [connectionStatus, setConnectionStatus] = useState('Disconnected');
 
-  const [activeFile, setActiveFile] = useState(Object.keys(files)[0] || null)
-  const [language, setLanguage] = useState('c_cpp') // Sẽ được cập nhật khi chọn file
-  const [code, setCode] = useState(activeFile ? files[activeFile] : '')
-  const [userInput, setUserInput] = useState('')
-  const [compileOutput, setCompileOutput] = useState('')
-  const [executionOutput, setExecutionOutput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+    const connectionRef = useRef(null);
 
-  // Lưu vào localStorage mỗi khi `files` thay đổi
-  useEffect(() => {
-    localStorage.setItem('code_files', JSON.stringify(files))
-  }, [files])
+    useEffect(() => {
+        // 1. Khởi tạo và kết nối đến JudgeHub qua backend ASP.NET
+        const connection = new HubConnectionBuilder()
+            .withUrl(SIGNALR_HUB_URL)
+            .withAutomaticReconnect()
+            .build();
 
-  // Cập nhật editor khi `activeFile` thay đổi
-  useEffect(() => {
-    if (activeFile) {
-      setCode(files[activeFile])
-      const ext = activeFile.split('.').pop()
-      if (ext === 'py') setLanguage('python')
-      else if (ext === 'cpp') setLanguage('c_cpp')
-    }
-  }, [activeFile, files])
+        connectionRef.current = connection;
 
-  const handleNewFile = () => {
-    const fileName = prompt('Nhập tên file (ví dụ: script.py hoặc main.cpp):')
-    if (fileName && !files[fileName]) {
-      setFiles({ ...files, [fileName]: `// Bắt đầu viết code cho ${fileName}` })
-      setActiveFile(fileName)
-    } else if (files[fileName]) {
-      alert('File đã tồn tại!')
-    }
-  }
+        const startConnection = async () => {
+            try {
+                await connection.start();
+                console.log("SignalR Connected.");
+                setConnectionStatus('Connected');
+            } catch (err) {
+                console.error("SignalR Connection Error: ", err);
+                setConnectionStatus('Error');
+                setTimeout(startConnection, 5000); // Thử kết nối lại sau 5 giây
+            }
+        };
 
-  const handleSaveFile = () => {
-    if (activeFile) {
-      setFiles({ ...files, [activeFile]: code })
-      alert(`Đã lưu file ${activeFile}!`)
-    }
-  }
+        startConnection();
 
-  const handleRun = async () => {
-    setIsLoading(true)
-    setCompileOutput('')
-    setExecutionOutput('')
-    try {
-      const response = await fetch('http://localhost:3000/compile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code, language, userInput }),
-      })
-      const data = await response.json()
-      setCompileOutput(data.compileOutput)
-      setExecutionOutput(data.executionOutput)
-    } catch (error) {
-      setCompileOutput('Lỗi: Không thể kết nối đến server biên dịch.')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+        // 2. Lắng nghe sự kiện "DisplayExecutionResult" từ Hub để nhận kết quả
+        connection.on("DisplayExecutionResult", (executionResult) => {
+            console.log("Received execution result:", executionResult);
+            setResult(executionResult);
+            setIsLoading(false); // Dừng trạng thái loading
+        });
+
+        // Xử lý các trạng thái kết nối của SignalR
+        connection.onreconnecting(() => setConnectionStatus('Reconnecting...'));
+        connection.onreconnected(() => setConnectionStatus('Connected'));
+        connection.onclose(() => setConnectionStatus('Disconnected'));
+
+        // Cleanup: Đóng kết nối khi component bị unmount
+        return () => {
+            if (connectionRef.current && connectionRef.current.state === HubConnectionState.Connected) {
+                connectionRef.current.stop();
+            }
+        };
+    }, []);
+
+    // Lưu vào localStorage mỗi khi `files` thay đổi
+    useEffect(() => {
+        localStorage.setItem('code_files', JSON.stringify(files));
+    }, [files]);
+
+    // Cập nhật editor khi `activeFile` thay đổi
+    useEffect(() => {
+        if (activeFile && files[activeFile]) {
+            setCode(files[activeFile]);
+            const ext = activeFile.split('.').pop();
+            if (ext === 'py') setLanguage('python');
+            else if (ext === 'cpp' || ext === 'c') setLanguage('c_cpp');
+        }
+    }, [activeFile, files]);
+
+    const handleSaveFile = () => {
+        if (activeFile) {
+            setFiles(prevFiles => ({ ...prevFiles, [activeFile]: code }));
+            alert(`Đã lưu file ${activeFile}!`);
+        }
+    };
+
+    const handleRunCode = async () => {
+        if (connectionRef.current?.state !== HubConnectionState.Connected) {
+            alert("Server not connected. Please wait.");
+            return;
+        }
+
+        setIsLoading(true);
+        setResult({ status: 'Queued...' }); // Cập nhật UI ngay lập tức
+
+        const payload = {
+            code: code,
+            language: language,
+            userInput: userInput,
+            userConnectionId: connectionRef.current.connectionId // ID quan trọng để Hub biết gửi kết quả về đâu
+        };
+
+        try {
+            // 3. Gửi yêu cầu đến proxy server.js
+            const response = await fetch(PROXY_COMPILE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                // Nếu proxy hoặc API nội bộ trả về lỗi
+                throw new Error(data.message || 'Failed to queue execution.');
+            }
+
+            // Proxy chỉ xác nhận đã nhận yêu cầu, kết quả thực thi sẽ đến qua SignalR
+            console.log('Execution request sent successfully:', data.message);
+
+        } catch (error) {
+            console.error('Error sending execution request:', error);
+            setResult({ status: 'ClientError', error: error.message });
+            setIsLoading(false);
+        }
+    };
+
+    const handleNewFile = () => {
+        const fileName = prompt('Nhập tên file (ví dụ: script.py hoặc main.cpp):');
+        if (fileName && !files[fileName]) {
+            setFiles({ ...files, [fileName]: `// Bắt đầu viết code cho ${fileName}` });
+            setActiveFile(fileName);
+        } else if (files[fileName]) {
+            alert('File đã tồn tại!');
+        }
+    };
 
   return (
     <div className="app-layout">
@@ -113,12 +174,15 @@ function App() {
             </li>
           ))}
         </ul>
+        <div style={{padding: '0.5rem', marginTop: 'auto', fontSize: '0.8em'}}>
+            SignalR: <strong>{connectionStatus}</strong>
+        </div>
       </div>
       <div className="main-content">
         <div className="container">
           <div className="controls">
             <span>Ngôn ngữ: {language === 'c_cpp' ? 'C++' : 'Python'}</span>
-            <button onClick={handleRun} disabled={isLoading || language !== 'c_cpp'}>
+            <button onClick={handleRunCode} disabled={isLoading || connectionStatus !== 'Connected' || language !== 'c_cpp'}>
               {isLoading ? 'Đang chạy...' : 'Run Code'}
             </button>
           </div>
@@ -134,6 +198,7 @@ function App() {
               setOptions={{ enableBasicAutocompletion: true, enableLiveAutocompletion: true }}
               width="100%"
               height="100%"
+              fontSize={14}
             />
           </div>
           <div className="io-layout">
@@ -149,10 +214,30 @@ function App() {
             <div className="io-pane">
               <h3>Output</h3>
               <div className="io-box output-box">
-                <p>--- COMPILER ---</p>
-                <pre>{compileOutput}</pre>
-                <p>--- EXECUTION ---</p>
-                <pre>{executionOutput}</pre>
+                {isLoading && !result && <p>Đang chờ kết quả...</p>}
+                {result && (
+                    <>
+                        <p>--- STATUS: {result.status} ---</p>
+                        {result.error && (
+                            <>
+                                <p>--- ERROR ---</p>
+                                <pre>{result.error}</pre>
+                            </>
+                        )}
+                        {result.output && (
+                            <>
+                                <p>--- OUTPUT ---</p>
+                                <pre>{result.output}</pre>
+                            </>
+                        )}
+                        <p>--- METRICS ---</p>
+                        <pre>
+                            Thời gian: {result.executionTimeSeconds?.toFixed(3) ?? 'N/A'} s
+                            <br />
+                            Bộ nhớ: {result.memoryUsageMB ?? 'N/A'} MB
+                        </pre>
+                    </>
+                )}
               </div>
             </div>
           </div>
