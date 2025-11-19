@@ -94,6 +94,28 @@ html, body {
 .file-item.active {
   background-color: #094771;
 }
+.file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-grow: 1;
+}
+
+.delete-file-btn {
+  background: none;
+  border: none;
+  color: #d4d4d4;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0 0.25rem;
+  margin-left: 0.5rem;
+  display: none; /* Ẩn nút xóa mặc định */
+}
+
+/* Hiển thị nút xóa khi di chuột qua file-item */
+.file-item:hover .delete-file-btn {
+  display: inline-block;
+}
 
 .io-layout {
   margin-top: 1rem;

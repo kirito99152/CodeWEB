@@ -96,12 +96,16 @@ function App() {
         }
     }, [activeFile, files]);
 
-    const handleSaveFile = () => {
+    // Tự động lưu vào state `files` mỗi khi `code` thay đổi (với độ trễ)
+    useEffect(() => {
         if (activeFile) {
-            setFiles(prevFiles => ({ ...prevFiles, [activeFile]: code }));
-            alert(`Đã lưu file ${activeFile}!`);
+            const handler = setTimeout(() => {
+                setFiles(prevFiles => ({ ...prevFiles, [activeFile]: code }));
+            }, 500); // Đợi 500ms sau khi người dùng ngừng gõ rồi mới lưu
+
+            return () => clearTimeout(handler); // Hủy timeout nếu người dùng gõ tiếp
         }
-    };
+    }, [code, activeFile]); // Chạy lại effect này khi code hoặc file đang mở thay đổi
 
     const handleRunCode = async () => {
         if (connectionRef.current?.state !== HubConnectionState.Connected) {
@@ -147,12 +151,54 @@ function App() {
     };
 
     const handleNewFile = () => {
-        const fileName = prompt('Nhập tên file (ví dụ: script.py hoặc main.cpp):');
-        if (fileName && !files[fileName]) {
-            setFiles({ ...files, [fileName]: `// Bắt đầu viết code cho ${fileName}` });
-            setActiveFile(fileName);
-        } else if (files[fileName]) {
+        const fileName = prompt('Nhập tên file (phải có đuôi .cpp hoặc .py):');
+
+        if (!fileName) {
+            return; // Người dùng đã hủy
+        }
+
+        if (files[fileName]) {
             alert('File đã tồn tại!');
+            return;
+        }
+
+        const extension = fileName.split('.').pop();
+
+        if (extension === 'cpp') {
+            const cppTemplate = `#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    
+    return 0;
+}`;
+            setFiles({ ...files, [fileName]: cppTemplate });
+            setActiveFile(fileName);
+        } else if (extension === 'py') {
+            setFiles({ ...files, [fileName]: `# Bắt đầu viết code Python cho ${fileName}` });
+            setActiveFile(fileName);
+        } else {
+            alert('Tên file không hợp lệ. Chỉ chấp nhận file có đuôi .cpp hoặc .py.');
+        }
+    };
+
+    const handleDeleteFile = (fileNameToDelete, event) => {
+        // Ngăn sự kiện click vào thẻ li cha bị kích hoạt
+        event.stopPropagation();
+
+        if (window.confirm(`Bạn có chắc chắn muốn xóa file "${fileNameToDelete}" không?`)) {
+            // Tạo một bản sao của state `files` và xóa file được chỉ định
+            const newFiles = { ...files };
+            delete newFiles[fileNameToDelete];
+            setFiles(newFiles);
+
+            // Nếu file bị xóa đang được mở, hãy chuyển sang file khác hoặc xóa nội dung editor
+            if (activeFile === fileNameToDelete) {
+                const remainingFiles = Object.keys(newFiles);
+                // Chuyển sang file đầu tiên trong danh sách còn lại, hoặc null nếu không còn file nào
+                const nextActiveFile = remainingFiles.length > 0 ? remainingFiles[0] : null;
+                setActiveFile(nextActiveFile);
+            }
         }
     };
 
@@ -161,7 +207,6 @@ function App() {
       <div className="sidebar">
         <div className="sidebar-header">
           <button onClick={handleNewFile}>Tạo file mới</button>
-          <button onClick={handleSaveFile} disabled={!activeFile}>Lưu file</button>
         </div>
         <ul className="file-list">
           {Object.keys(files).map((file) => (
@@ -170,7 +215,11 @@ function App() {
               className={`file-item ${file === activeFile ? 'active' : ''}`}
               onClick={() => setActiveFile(file)}
             >
-              {file}
+              <span className="file-name">{file}</span>
+              <button
+                className="delete-file-btn"
+                onClick={(e) => handleDeleteFile(file, e)}
+              >✖</button>
             </li>
           ))}
         </ul>

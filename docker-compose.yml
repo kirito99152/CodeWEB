@@ -3,10 +3,10 @@ services:
   codeweb:
     build: .
     container_name: codeweb_app
+    env_file:
+      - .env.local
     ports:
       - "3000:3000"
-    environment:
-      - BASE_URL=/CodeWEB/
-    # Giữ lại volume này nếu bạn muốn thư mục temp được đồng bộ ra ngoài
-    # volumes:
-    #   - ./temp:/app/temp
+    volumes:
+      - ./temp:/app/temp
+      - ./dist:/app/dist
