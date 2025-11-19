@@ -15,7 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '20mb' }));
 
 // Phục vụ các file tĩnh từ thư mục 'dist' của React
 app.use(express.static(path.join(__dirname, 'dist')));
