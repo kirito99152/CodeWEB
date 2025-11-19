@@ -25,6 +25,42 @@ int main() {
 }`,
 };
 
+const KeybindsHelpModal = ({ onClose }) => {
+    return (
+        <div className="modal-backdrop" onClick={onClose}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h2>Phím tắt (Keybinds)</h2>
+                    <button onClick={onClose} className="modal-close-btn">&times;</button>
+                </div>
+                <div className="modal-body">
+                    <ul>
+                        <li>
+                            <strong>Chạy Code:</strong>
+                            <span>Ctrl + Enter</span>
+                        </li>
+                        <li>
+                            <strong>Tạo File Mới:</strong>
+                            <span>Ctrl + Alt + N</span>
+                        </li>
+                        <li>
+                            <strong>Ẩn/Hiện Explorer:</strong>
+                            <span>Ctrl + B</span>
+                        </li>
+                        <li>
+                            <strong>Ẩn/Hiện Terminal:</strong>
+                            <span>Ctrl + `</span>
+                        </li>
+                        <li>
+                            <strong>Lưu File (Tự động):</strong>
+                            <span>Ctrl + S</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    );
+};
 function App() {
     // Cấu trúc lại state `files` để mỗi file có code, userInput, và result riêng
     const [files, setFiles] = useState(() => {
@@ -56,6 +92,7 @@ function App() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isIoVisible, setIsIoVisible] = useState(true);
     const [activeView, setActiveView] = useState('explorer'); // 'explorer', 'search', 'run', 'settings'
+    const [isKeybindsModalVisible, setIsKeybindsModalVisible] = useState(false);
 
     const connectionRef = useRef(null);
     const sidebarPanelRef = useRef(null);
@@ -114,6 +151,52 @@ function App() {
     useEffect(() => {
         localStorage.setItem('code_files', JSON.stringify(files));
     }, [files]);
+
+    // Thêm keybinds (phím tắt) cho các hành động thông dụng
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            // Xác định phím Control (Windows/Linux) hoặc Command (macOS)
+            const isCtrlOrCmd = event.ctrlKey || event.metaKey;
+
+            // Chạy code: Ctrl/Cmd + Enter
+            if (isCtrlOrCmd && event.key === 'Enter') {
+                event.preventDefault();
+                // Chỉ chạy nếu nút Run không bị vô hiệu hóa
+                if (!isLoading && connectionStatus === 'Connected') {
+                    handleRunCode();
+                }
+            }
+
+            // Lưu file: Ctrl/Cmd + S (chặn hành động mặc định của trình duyệt)
+            if (isCtrlOrCmd && event.key === 's') {
+                event.preventDefault();
+                // Có thể thêm thông báo "Đã lưu tự động" ở đây nếu muốn
+            }
+
+            // Ẩn/Hiện Sidebar: Ctrl/Cmd + B
+            if (isCtrlOrCmd && event.key === 'b') {
+                event.preventDefault();
+                toggleSidebar();
+            }
+
+            // Ẩn/Hiện Terminal: Ctrl + `
+            if (isCtrlOrCmd && event.key === '`') {
+                event.preventDefault();
+                setIsIoVisible(prev => !prev);
+            }
+
+            // Tạo file mới: Ctrl + Alt + N
+            if (isCtrlOrCmd && event.altKey && event.key === 'n') {
+                event.preventDefault();
+                handleNewFile();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isLoading, connectionStatus, files, activeFile, isIoVisible]); // Thêm dependencies để có state mới nhất
 
     // Hàm cập nhật code cho file đang active
     const setCode = (newCode) => {
@@ -193,7 +276,7 @@ function App() {
 
         const extension = fileName.split('.').pop();
 
-        if (extension === 'cpp') {
+        if (extension === 'cpp' || extension === 'c') {
             const cppTemplate = `#include <bits/stdc++.h>
 using namespace std;
 
@@ -204,7 +287,7 @@ int main() {
             setFiles({ ...files, [fileName]: { code: cppTemplate, userInput: '', result: null } });
             setActiveFile(fileName);
         } else if (extension === 'py') {
-            setFiles({ ...files, [fileName]: { code: `# Bắt đầu viết code Python cho ${fileName}`, userInput: '', result: null } });
+            setFiles({ ...files, [fileName]: { code: `# Bắt đầu viết code Python cho ${fileName}\n\n`, userInput: '', result: null } });
             setActiveFile(fileName);
         } else {
             alert('Tên file không hợp lệ. Chỉ chấp nhận file có đuôi .cpp hoặc .py.');
@@ -282,6 +365,9 @@ int main() {
         </button>
         <button onClick={() => setIsIoVisible(!isIoVisible)}>
           {isIoVisible ? 'Ẩn Terminal' : 'Hiện Terminal'}
+        </button>
+        <button onClick={() => setIsKeybindsModalVisible(true)}>
+          Keybinds
         </button>
         <div className="connection-status">
           SignalR: <strong>{connectionStatus}</strong>
@@ -496,6 +582,8 @@ int main() {
           <span>LF</span>
         </div>
       </div>
+
+      {isKeybindsModalVisible && <KeybindsHelpModal onClose={() => setIsKeybindsModalVisible(false)} />}
     </div>
   )
 }

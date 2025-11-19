@@ -10,3 +10,4 @@ services:
     volumes:
       - ./temp:/app/temp
       - ./dist:/app/dist
+      - ./server.js:/app/server.js
