@@ -15,43 +15,20 @@ html, body {
   display: flex;
 }
 
-.app-container {
-  display: flex;
-  flex-direction: column;
+.app-root {
   height: 100vh;
-  width: 100%;
-}
-
-.app-layout {
-  display: flex;
-  width: 100%;
-  flex-grow: 1;
-  overflow: hidden;
-}
-
-.sidebar {
-  background-color: #252526;
-  border-right: 1px solid #444;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
+  width: 100%;
 }
+
+
 
 .main-content {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: auto;
-  padding: 0;
-}
-
-.container {
-  width: 100%;
-  height: 100%;
-  background-color: #1e1e1e;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
 }
 
@@ -59,10 +36,16 @@ html, body {
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 0.75rem 1.5rem;
-  background-color: #3c3c3c;
+  padding: 4px 12px;
+  background-color: #1e1e1e; /* Đổi màu nền cho phù hợp */
   border-bottom: 1px solid #444;
   flex-shrink: 0;
+  font-size: 12px;
+  height: 5px; /* Thu nhỏ thanh controls vì không còn nội dung */
+}
+
+.controls button {
+  font-size: 12px;
 }
 
 .editor-container {
@@ -70,16 +53,35 @@ html, body {
   display: flex;
   overflow: hidden;
 }
+.sidebar {
+  background-color: #252526;
+  border-right: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  height: 100%;
+}
 
 .sidebar-header {
-  padding: 0.75rem;
+  padding: 6px 8px;
   display: flex;
-  gap: 0.5rem;
+  gap: 4px;
   border-bottom: 1px solid #444;
 }
 
 .sidebar-header button {
   flex-grow: 1;
+  font-size: 12px;
+  /* Redesign button */
+  background-color: #3a3d41;
+  color: #ffffff;
+  border: 1px solid #555;
+  border-radius: 2px;
+  padding: 4px 8px;
+}
+
+.sidebar-header button:hover {
+  background-color: #45494e;
 }
 
 .file-list {
@@ -95,6 +97,7 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 
 .file-item:hover {
@@ -137,7 +140,7 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .io-box {
@@ -180,22 +183,24 @@ textarea.io-box {
   display: flex;
   align-items: center;
   padding: 4px 8px;
-  background-color: #333;
-  border-bottom: 1px solid #444;
+  background-color: #252526;
+  border-bottom: 1px solid #333;
   flex-shrink: 0;
+  gap: 8px;
 }
 
 .app-header button {
-  margin-right: 10px;
-  background-color: #555;
-  color: white;
-  border: 1px solid #666;
-  padding: 4px 8px;
-  cursor: pointer;
+  margin-right: 0;
+  background-color: #3a3d41;
+  color: #ffffff;
+  border: 1px solid #3a3d41;
+  padding: 2px 10px;
+  font-size: 12px;
+  border-radius: 2px;
 }
 
 .app-header button:hover {
-  background-color: #666;
+  background-color: #45494e;
 }
 
 .connection-status {
@@ -205,7 +210,7 @@ textarea.io-box {
 
 .resize-handle {
   background-color: #444;
-  transition: all 0.15s ease-in-out;
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
   position: relative;
 }
 
@@ -241,4 +246,210 @@ textarea.io-box {
 .resize-handle[data-panel-group-direction="horizontal"]:hover,
 .resize-handle[data-panel-group-direction="horizontal"][data-resize-handle-active="pointer"] {
   width: 7px;
+}
+
+/* Titlebar mỏng trên cùng */
+.titlebar {
+  height: 28px;
+  background: #3c3c3c;
+  border-bottom: 1px solid #2c2c2c;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 12px;
+  flex-shrink: 0;
+  /* -webkit-app-region: drag; */ /* nếu dùng electron thì đẹp luôn */
+}
+
+.titlebar-left,
+.titlebar-center,
+.titlebar-right {
+  display: flex;
+  align-items: center;
+}
+
+.titlebar-left {
+  flex: 0 0 auto;
+}
+
+.titlebar-center {
+  flex: 1;
+  justify-content: center;
+  opacity: 0.9;
+}
+
+.titlebar-right {
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.app-title {
+  font-weight: 600;
+}
+
+.titlebar-filename {
+  color: #ccc;
+}
+
+.titlebar-status {
+  color: #9cdcfe;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* Activity bar */
+.activity-bar {
+  width: 48px;
+  background-color: #333333;
+  border-right: 1px solid #2d2d2d;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 8px;
+  gap: 4px;
+}
+
+.activity-item {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: none;
+  background-color: transparent; /* Ghi đè background từ index.css */
+  color: #ffffff; /* Đổi màu icon thành trắng cho nổi bật hơn */
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.activity-item:hover {
+  background-color: #3a3d41;
+}
+
+.activity-item.active {
+  background-color: #007acc;
+  color: white;
+}
+
+.sidebar-title {
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #bbbbbb;
+  padding: 6px 8px 4px;
+  border-bottom: 1px solid #333;
+}
+
+/* Tabs giống VSCode */
+.tab-bar {
+  display: flex;
+  background-color: #252526;
+  border-bottom: 1px solid #333;
+  height: 32px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #cccccc;
+  border-right: 1px solid #333;
+  position: relative;
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.tab.active {
+  background-color: #1e1e1e;
+  color: #ffffff;
+  border-bottom: 1px solid #1e1e1e;
+}
+
+.tab-icon {
+  margin-right: 6px;
+  font-size: 16px; /* Tăng kích thước icon một chút cho dễ nhìn */
+}
+
+.tab-name {
+  max-width: 150px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.tab-close {
+  margin-left: 8px;
+  border: none;
+  background: transparent;
+  color: #aaaaaa;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  padding: 0;
+}
+
+.tab:hover .tab-close {
+  opacity: 1;
+}
+
+.tab-close:hover {
+  color: #ffffff;
+}
+
+.io-header {
+  padding: 4px 8px;
+  background-color: #2d2d2d;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.io-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #c5c5c5;
+}
+
+/* Status bar đáy */
+.status-bar {
+  height: 22px;
+  background-color: #007acc;
+  color: #ffffff;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.status-left,
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.run-button-sidebar {
+  width: 100%;
+  padding: 8px;
+  font-size: 14px;
+  background-color: #0e639c;
+  color: white;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.run-button-sidebar:hover:not(:disabled) {
+  background-color: #1177bb;
 }
