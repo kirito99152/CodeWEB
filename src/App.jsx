@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import './App.css'
 import AceEditor from 'react-ace'
 
@@ -35,9 +36,13 @@ function App() {
     const [result, setResult] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState('Disconnected');
+    
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [isIoVisible, setIsIoVisible] = useState(true);
 
     const connectionRef = useRef(null);
-
+    const sidebarPanelRef = useRef(null);
+    
     useEffect(() => {
         // 1. Khởi tạo và kết nối đến JudgeHub qua backend ASP.NET
         const connection = new HubConnectionBuilder()
@@ -202,96 +207,117 @@ int main() {
         }
     };
 
+    const toggleSidebar = () => {
+        const panel = sidebarPanelRef.current;
+        if (panel) {
+            if (panel.isCollapsed()) {
+                panel.expand();
+            } else {
+                panel.collapse();
+            }
+        }
+    };
+
   return (
-    <div className="app-layout">
-      <div className="sidebar">
-        <div className="sidebar-header">
-          <button onClick={handleNewFile}>Tạo file mới</button>
-        </div>
-        <ul className="file-list">
-          {Object.keys(files).map((file) => (
-            <li
-              key={file}
-              className={`file-item ${file === activeFile ? 'active' : ''}`}
-              onClick={() => setActiveFile(file)}
-            >
-              <span className="file-name">{file}</span>
-              <button
-                className="delete-file-btn"
-                onClick={(e) => handleDeleteFile(file, e)}
-              >✖</button>
-            </li>
-          ))}
-        </ul>
-        <div style={{padding: '0.5rem', marginTop: 'auto', fontSize: '0.8em'}}>
+    <div className="app-container">
+      <div className="app-header">
+        <button onClick={toggleSidebar}>
+          {isSidebarCollapsed ? 'Hiện Sidebar' : 'Ẩn Sidebar'}
+        </button>
+        <button onClick={() => setIsIoVisible(!isIoVisible)}>
+          {isIoVisible ? 'Ẩn I/O' : 'Hiện I/O'}
+        </button>
+        <div className="connection-status">
             SignalR: <strong>{connectionStatus}</strong>
         </div>
       </div>
-      <div className="main-content">
-        <div className="container">
-          <div className="controls">
-            <span>Ngôn ngữ: {language === 'c_cpp' ? 'C++' : 'Python'}</span>
-            <button onClick={handleRunCode} disabled={isLoading || connectionStatus !== 'Connected'}>
-              {isLoading ? 'Đang chạy...' : 'Run Code'}
-            </button>
-          </div>
-          <div className="editor-container">
-            <AceEditor
-              mode={language}
-              theme="monokai"
-              onChange={(newCode) => setCode(newCode)}
-              value={code}
-              name="ace-editor"
-              showPrintMargin={false}
-              editorProps={{ $blockScrolling: true }}
-              setOptions={{ enableBasicAutocompletion: true, enableLiveAutocompletion: true }}
-              width="100%"
-              height="100%"
-              fontSize={14}
-            />
-          </div>
-          <div className="io-layout">
-            <div className="io-pane">
-              <h3>Input</h3>
-              <textarea
-                className="io-box"
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                placeholder="Nhập dữ liệu đầu vào cho chương trình..."
-              />
+      <PanelGroup direction="horizontal" className="app-layout">
+        <Panel ref={sidebarPanelRef} defaultSize={20} minSize={15} collapsible={true} onCollapse={setIsSidebarCollapsed} collapsed={isSidebarCollapsed}>
+          <div className="sidebar">
+            <div className="sidebar-header">
+              <button onClick={handleNewFile}>Tạo file mới</button>
             </div>
-            <div className="io-pane">
-              <h3>Output</h3>
-              <div className="io-box output-box">
-                {isLoading && !result && <p>Đang chờ kết quả...</p>}
-                {result && (
-                    <>
-                        <p>--- STATUS: {result.status} ---</p>
-                        {result.error && (
-                            <>
-                                <p>--- ERROR ---</p>
-                                <pre>{result.error}</pre>
-                            </>
-                        )}
-                        {result.output && (
-                            <>
-                                <p>--- OUTPUT ---</p>
-                                <pre>{result.output}</pre>
-                            </>
-                        )}
-                        <p>--- METRICS ---</p>
-                        <pre>
-                            Thời gian: {result.executionTimeSeconds?.toFixed(3) ?? 'N/A'} s
-                            <br />
-                            Bộ nhớ: {result.memoryUsageMB ?? 'N/A'} MB
-                        </pre>
-                    </>
-                )}
+            <ul className="file-list">
+              {Object.keys(files).map((file) => (
+                <li key={file} className={`file-item ${file === activeFile ? 'active' : ''}`} onClick={() => setActiveFile(file)}>
+                  <span className="file-name">{file}</span>
+                  <button className="delete-file-btn" onClick={(e) => handleDeleteFile(file, e)}>✖</button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Panel>
+        <PanelResizeHandle className="resize-handle" />
+        <Panel>
+          <PanelGroup direction="vertical">
+            <Panel minSize={30}>
+              <div className="main-content">
+                <div className="controls">
+                  <span>Ngôn ngữ: {language === 'c_cpp' ? 'C++' : 'Python'}</span>
+                  <button onClick={handleRunCode} disabled={isLoading || connectionStatus !== 'Connected'}>
+                    {isLoading ? 'Đang chạy...' : 'Run Code'}
+                  </button>
+                </div>
+                <div className="editor-container">
+                  <AceEditor
+                    mode={language}
+                    theme="monokai"
+                    onChange={(newCode) => setCode(newCode)}
+                    value={code}
+                    name="ace-editor"
+                    showPrintMargin={false}
+                    editorProps={{ $blockScrolling: true }}
+                    setOptions={{ enableBasicAutocompletion: true, enableLiveAutocompletion: true }}
+                    width="100%"
+                    height="100%"
+                    fontSize={14}
+                  />
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
+            </Panel>
+            {isIoVisible && <PanelResizeHandle className="resize-handle" />}
+            {isIoVisible && (
+              <Panel defaultSize={30} minSize={10} collapsible>
+                <PanelGroup direction="horizontal" className="io-layout">
+                  <Panel minSize={20}>
+                    <div className="io-pane">
+                      <h3>Input</h3>
+                      <textarea
+                        className="io-box"
+                        value={userInput}
+                        onChange={(e) => setUserInput(e.target.value)}
+                        placeholder="Nhập dữ liệu đầu vào cho chương trình..."
+                      />
+                    </div>
+                  </Panel>
+                  <PanelResizeHandle className="resize-handle" />
+                  <Panel minSize={20}>
+                    <div className="io-pane">
+                      <h3>Output</h3>
+                      <div className="io-box output-box">
+                        {isLoading && !result && <p>Đang chờ kết quả...</p>}
+                        {result && (
+                          <>
+                            <p>--- STATUS: {result.status} ---</p>
+                            {result.error && <><p>--- ERROR ---</p><pre>{result.error}</pre></>}
+                            {result.output && <><p>--- OUTPUT ---</p><pre>{result.output}</pre></>}
+                            <p>--- METRICS ---</p>
+                            <pre>
+                              Thời gian: {result.executionTimeSeconds?.toFixed(3) ?? 'N/A'} s
+                              <br />
+                              Bộ nhớ: {result.memoryUsageMB ?? 'N/A'} MB
+                            </pre>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </Panel>
+                </PanelGroup>
+              </Panel>
+            )}
+          </PanelGroup>
+        </Panel>
+      </PanelGroup>
     </div>
   )
 }

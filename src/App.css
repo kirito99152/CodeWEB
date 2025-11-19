@@ -15,14 +15,21 @@ html, body {
   display: flex;
 }
 
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+}
+
 .app-layout {
   display: flex;
   width: 100%;
-  height: 100%;
+  flex-grow: 1;
+  overflow: hidden;
 }
 
 .sidebar {
-  width: 200px;
   background-color: #252526;
   border-right: 1px solid #444;
   display: flex;
@@ -34,6 +41,9 @@ html, body {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: auto;
+  padding: 0;
 }
 
 .container {
@@ -118,17 +128,16 @@ html, body {
 }
 
 .io-layout {
-  margin-top: 1rem;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  padding: 1rem 1.5rem 1.5rem;
-  flex-shrink: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
 }
 
 .io-pane {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: auto;
 }
 
 .io-box {
@@ -165,4 +174,71 @@ html, body {
 textarea.io-box {
   line-height: 1.5;
   overflow-y: auto; /* Thêm thanh cuộn cho ô input */
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: #333;
+  border-bottom: 1px solid #444;
+  flex-shrink: 0;
+}
+
+.app-header button {
+  margin-right: 10px;
+  background-color: #555;
+  color: white;
+  border: 1px solid #666;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.app-header button:hover {
+  background-color: #666;
+}
+
+.connection-status {
+  margin-left: auto;
+  font-size: 0.9em;
+}
+
+.resize-handle {
+  background-color: #444;
+  transition: all 0.15s ease-in-out;
+  position: relative;
+}
+
+/* Handle NẰM NGANG (chia panel trên-dưới) trong một group DỌC */
+.resize-handle[data-panel-group-direction="vertical"] {
+  height: 5px;
+  cursor: row-resize;
+  margin: -1px 0; /* Bù lại 2px tăng thêm khi hover để layout không bị giật */
+}
+
+/* Handle NẰM DỌC (chia panel trái-phải) trong một group NGANG */
+.resize-handle[data-panel-group-direction="horizontal"] {
+  width: 5px;
+  cursor: col-resize;
+  margin: 0 -1px; /* Bù lại 2px tăng thêm khi hover để layout không bị giật */
+}
+
+.resize-handle:hover,
+.resize-handle[data-resize-handle-active="pointer"],
+.resize-handle[data-resize-handle-state="drag"] {
+  background-color: #0097ff; /* Một màu xanh sáng hơn */
+  box-shadow: 0 0 8px 0 rgba(0, 151, 255, 0.7); /* Thêm hiệu ứng phát sáng */
+  z-index: 10; /* Đảm bảo handle nằm trên các thành phần khác */
+}
+
+/* Làm cho handle NẰM NGANG dày lên khi tương tác */
+.resize-handle[data-panel-group-direction="vertical"]:hover,
+.resize-handle[data-panel-group-direction="vertical"][data-resize-handle-active="pointer"] {
+  height: 7px;
+}
+
+/* Làm cho handle NẰM DỌC dày lên khi tương tác */
+.resize-handle[data-panel-group-direction="horizontal"]:hover,
+.resize-handle[data-panel-group-direction="horizontal"][data-resize-handle-active="pointer"] {
+  width: 7px;
 }
