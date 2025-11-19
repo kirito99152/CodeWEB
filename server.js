@@ -37,19 +37,26 @@ async function processCode(code, language, userInput, userConnectionId, res) {
   console.log(`> Ngôn ngữ: ${language}`);
   console.log(`> Input: "${userInput.slice(0, 50)}${userInput.length > 50 ? '...' : ''}"`);
 
-  if (language !== 'c_cpp') {
-    console.log('[LỖI] Ngôn ngữ không được hỗ trợ.');
-    return res.status(400).json({ output: 'Chỉ hỗ trợ chạy code C++.', error: '' });
+  const languageMapping = {
+    c_cpp: 'cpp',
+    python: 'python',
+  };
+
+  const apiLanguage = languageMapping[language];
+
+  if (!apiLanguage) {
+    const errorMessage = `Ngôn ngữ không được hỗ trợ: ${language}. Chỉ hỗ trợ C++ và Python.`;
+    console.log(`[LỖI] ${errorMessage}`);
+    return res.status(400).json({ message: errorMessage });
   }
 
   if (!userConnectionId) {
     console.log('[LỖI] Thiếu userConnectionId.');
     return res.status(400).json({ message: 'Thiếu userConnectionId. Không thể gửi yêu cầu chấm bài.' });
   }
-
   const payload = {
     sourceCode: code,
-    language: 'cpp', // API nội bộ yêu cầu 'cpp'
+    language: apiLanguage, // Chuyển đổi 'c_cpp' -> 'cpp', 'python' -> 'python'
     input: userInput,
     userConnectionId: userConnectionId // Sử dụng connection ID từ client
   };

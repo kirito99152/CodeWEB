@@ -231,7 +231,7 @@ int main() {
         <div className="container">
           <div className="controls">
             <span>Ngôn ngữ: {language === 'c_cpp' ? 'C++' : 'Python'}</span>
-            <button onClick={handleRunCode} disabled={isLoading || connectionStatus !== 'Connected' || language !== 'c_cpp'}>
+            <button onClick={handleRunCode} disabled={isLoading || connectionStatus !== 'Connected'}>
               {isLoading ? 'Đang chạy...' : 'Run Code'}
             </button>
           </div>
